@@ -4,70 +4,75 @@ import Parse from "../lib/parse";
 jest.mock("../lib/parse");
 
 describe("Integração - Favoritos", () => {
-
   let mockDB = [];
 
   beforeEach(() => {
     mockDB = [];
+    jest.clearAllMocks();
 
     Parse.User.current.mockReturnValue({ id: "user1" });
 
-    Parse.Object.extend.mockImplementation(() => function () {
-      return {
-        set: function (key, value) {
-          this[key] = value;
-        },
-        save: function () {
-  mockDB.push({
-    get: (field) => this[field]
-  });
-},
+    Parse.Object.extend.mockImplementation(() => {
+      return function () {
+        return {
+          set: function (key, value) {
+            this[key] = value;
+          },
+          save: jest.fn().mockImplementation(function () {
+            mockDB.push({
+              get: (field) => this[field],
+              movieId: this.movieId
+            });
+            return Promise.resolve();
+          }),
+        };
       };
     });
 
     Parse.Query.mockImplementation(() => ({
       equalTo: jest.fn().mockReturnThis(),
 
-      first: jest.fn(() => {
-        return mockDB.find(f => f.movieId === 1) || null;
+      find: jest.fn().mockResolvedValue(mockDB),
+
+      first: jest.fn().mockImplementation(() => {
+        return Promise.resolve(mockDB[0] || null);
       }),
-
-      find: jest.fn(() => mockDB),
-
     }));
   });
 
   test("fluxo completo: salvar → listar → remover", async () => {
-
-    // salvar
-    const saved = await saveFavorite({
+    const movie = {
       id: 1,
       title: "Filme A",
       poster_path: "/img.jpg"
-    });
+    };
 
+    const saved = await saveFavorite(movie);
     expect(saved).toBe(true);
 
-    // listar
     const list = await getFavorites();
     expect(list.length).toBe(1);
+    expect(list[0].title).toBe("Filme A");
 
-    // remover
     Parse.Query.mockImplementation(() => ({
       equalTo: jest.fn().mockReturnThis(),
-      first: jest.fn(() => ({
-        destroy: () => {
+      first: jest.fn().mockResolvedValue({
+        destroy: jest.fn().mockImplementation(() => {
           mockDB = [];
-        }
-      }))
+          return Promise.resolve();
+        })
+      })
     }));
 
     const removed = await removeFavorite(1);
     expect(removed).toBe(true);
 
-    // verificar lista vazia
+    Parse.Query.mockImplementation(() => ({
+      equalTo: jest.fn().mockReturnThis(),
+      find: jest.fn().mockResolvedValue(mockDB)
+    }));
+
     const listAfter = await getFavorites();
     expect(listAfter.length).toBe(0);
   });
-
 });
