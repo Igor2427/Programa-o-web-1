@@ -23,6 +23,11 @@ jobs:
         run: npm install
         working-directory: site-de-filmes
 
-      - name: Rodar testes
-        run: npm test
+      - name: Rodar testes com coverage
+        run: npm test -- --coverage
         working-directory: site-de-filmes
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
