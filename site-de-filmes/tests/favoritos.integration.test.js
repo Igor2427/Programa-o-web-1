@@ -13,21 +13,21 @@ describe("Integração - Favoritos", () => {
     Parse.User.current.mockReturnValue({ id: "user1" });
 
     Parse.Object.extend.mockImplementation(() => {
-      return function () {
-        return {
-          set: function (key, value) {
-            this[key] = value;
-          },
-          save: jest.fn().mockImplementation(function () {
-            mockDB.push({
-              get: (field) => this[field],
-              movieId: this.movieId
-            });
-            return Promise.resolve();
-          }),
-        };
-      };
+  return function Favorite() {
+    this.set = function (key, value) {
+      this[key] = value;
+    };
+
+    this.save = jest.fn().mockImplementation(function () {
+      mockDB.push({
+        get: (field) => this[field],
+        movieId: this.movieId,
+      });
+
+      return Promise.resolve();
     });
+  };
+});
 
     Parse.Query.mockImplementation(() => ({
       equalTo: jest.fn().mockReturnThis(),
